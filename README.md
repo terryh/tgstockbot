@@ -37,12 +37,12 @@ example:
 
 ### 建立 telegram bot api
 
-建立 telegram bot  [https://core.telegram.org/bots#how-do-i-create-a-bot] (https://core.telegram.org/bots#how-do-i-create-a-bot)
+建立 telegram bot  [https://core.telegram.org/bots#how-do-i-create-a-bot](https://core.telegram.org/bots#how-do-i-create-a-bot)
 
 
 ### 永豐金證券的 API
 
-建立 api [https://ai.sinotrade.com.tw/python/Main/index.aspx] (https://ai.sinotrade.com.tw/python/Main/index.aspx)
+建立 api [https://ai.sinotrade.com.tw/python/Main/index.aspx](https://ai.sinotrade.com.tw/python/Main/index.aspx)
 
 ### 設定環境
 
