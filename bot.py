@@ -276,5 +276,5 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 if __name__ == '__main__':
     app = ApplicationBuilder().token(TG_TOKEN).build()
-    app.add_handler(MessageHandler(filters.ALL, start))
+    app.add_handler(MessageHandler(filters.TEXT, start))
     app.run_polling()
