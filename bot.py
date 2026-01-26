@@ -273,8 +273,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if reply_text != "":
         await update.message.reply_text(f'{reply_text}')
 
-app = ApplicationBuilder().token(TG_TOKEN).build()
 
-#app.add_handler(CommandHandler("start", start))
-app.add_handler(MessageHandler(filters.ALL, start))
-app.run_polling()
+if __name__ == '__main__':
+    app = ApplicationBuilder().token(TG_TOKEN).build()
+    app.add_handler(MessageHandler(filters.ALL, start))
+    app.run_polling()
