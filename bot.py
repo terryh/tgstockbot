@@ -33,6 +33,18 @@ bot
     SELL: (keyword: 賣, Sell, SELL, sell)
         follow the same rule with BUY
 
+    INFO: (keyword: INFO, info, DATA, data, Status)
+
+    CANCEL: (keyword: CANCEL, DEL)
+
+        取消買進或是賣出 0050 在價位 71
+
+        DEL 0050 @71
+
+        取消所有 0050 單
+
+        DEL 0050
+
     envioment variable
 
     TG_USERNAME = os.getenv('TG_USERNAME')              # your telegram username, only this username allow to talk with you
@@ -50,6 +62,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters
 from dotenv import load_dotenv
 import shioaji as sj
+from shioaji.constant import Status
 load_dotenv()
 
 TG_USERNAME = os.getenv('TG_USERNAME')              # your telegram username, only this username allow to talk with you
@@ -76,13 +89,20 @@ else:
 
 logger = logging.getLogger(__name__)
 
+# FIXME, should move to another file support different broker
 # sjapi.activate_ca(ca_path=CA_PATH, ca_passwd=CA_PASSWD, person_id=CA_PASSWD)
 accounts =  sjapi.login(API_KEY, API_SECRET)
 sjapi.activate_ca(ca_path=CA_PATH, ca_passwd=CA_PASSWD)
 logger.debug(f'signed in SinoPac with {accounts}')
 
+# after signed in 
+TSE_CONTRACT = sjapi.Contracts.Indexs.TSE.TSE001
+OTC_CONTRACT = sjapi.Contracts.Indexs.OTC.OTC101
+INFO_CONTRACTS = [TSE_CONTRACT, OTC_CONTRACT]
+
+# TODO CANCEL support
 class CMD:
-    """action  (string) => BUY, SELL, ASK
+    """action  (string) => BUY, SELL, ASK, DATA, CANCEL
      stock ([]string) => ["0050"]
      shares  (integr) => 1 the unit is 1 share, 1000 一張
      price   (float) 0
@@ -99,7 +119,7 @@ class CMD:
 
     def __init__(self, cmd=''):
 
-        self.cmd_string = cmd
+        self.cmd_string = cmd.strip().lower()
         self.cmd_slice = [s.strip() for s in cmd.split(" ")]
         stock_list = []
 
@@ -123,12 +143,25 @@ class CMD:
                     self.share_word = one
                     self.shares = int(shares_str)
                 break
+
         # test buy or sell
         match cmd:
-            case  cmd if any(word in cmd for word in ['buy', 'Buy', 'BUY', '買']):
+            case cmd if any(word in cmd for word in ['buy', 'Buy', 'BUY', '買']):
                 self.action = "BUY"
-            case  cmd if any(word in cmd for word in ['sell', 'Sell', 'SELL', '賣']):
+            case cmd if any(word in cmd for word in ['sell', 'Sell', 'SELL', '賣']):
                 self.action = "SELL"
+            case cmd if any(word in cmd for word in ['sell', 'Sell', 'SELL', '賣']):
+                self.action = "SELL"
+
+            case cmd if any(word in cmd for word in ["取消", "cancel", "Cancel","CANCEL",
+                                              "del", "Del", "DEL"]):
+                self.action = "CANCEL"
+
+            case cmd if self.cmd_string  in ["數據", "data",
+                                  "市場","market",
+                                  "資訊", "info",
+                                  "狀態", "status", "state"]:
+                self.action = "DATA"
             case _:
                 pass
 
@@ -238,6 +271,64 @@ def place_order(cmd):
 
     return "\n".join(reply_list)
 
+def del_order(cmd):
+    reply_list = []
+    sjapi.update_status()
+    print(cmd)
+    if len(cmd.stock) != 1:
+        return "股票代碼有問題啦"
+
+    stock_code = cmd.stock[0]
+    trades = sjapi.list_trades()
+
+    for idx, t in enumerate(trades):
+        if t.status.status != Status.Submitted:
+            continue
+
+        if t.contract.code == stock_code:
+            print("match code")
+            if cmd.price > 0 :
+                # price condition
+                if cmd.price == t.order.price:
+                    print("match price")
+                    order_op = sjapi.cancel_order(t)
+                    if order_op:
+                        line = f'取消 {order_op.order.ordno}' 
+                        reply_list.append(line)
+            else:
+                # no price condition
+                print("not care price go cancel")
+                order_op = sjapi.cancel_order(t)
+                if order_op:
+                    line = f'取消 {order_op.order.ordno}' 
+                    reply_list.append(line)
+
+    return "\n".join(reply_list)
+
+def status_data():
+    reply_list = []
+    # print(INFO_CONTRACTS)
+    sjapi.update_status()
+    snapshots = sjapi.snapshots(INFO_CONTRACTS)
+    if len(snapshots) == len(INFO_CONTRACTS):
+        # [Snapshot( ts=1769088600000000000, code='2377', exchange='TSE', open=101.0, high=103.0, low=100.5, close=101.0,
+        #    tick_type=<TickType.Sell: 'Sell'>, change_price=1.3, change_rate=1.3, change_type=<ChangeType.Up: 'Up'>,
+        #    average_price=101.54, volume=307, total_volume=6596, amount=31007000, total_amount=669805000, yesterday_volume=6626.0,
+        #    buy_price=100.5, buy_volume=490.0, sell_price=101.5, sell_volume=65, volume_ratio=1.0)]
+        for idx, s in enumerate(snapshots):
+            c = INFO_CONTRACTS[idx]
+            # print(s)
+            line = f'{c.name} {s.code} $ {s.close} ({s.change_price})\n量: {s.total_amount/100000000:.2f} 億\n++++++'
+            reply_list.append(line)
+    
+    trades = sjapi.list_trades()
+    for idx, t in enumerate(trades):
+        print(t)
+        line = f'{idx} {t.order.action} {t.contract.code}  {t.order.quantity} @ {t.order.price} (單號: {t.order.ordno} {t.status.status}) \n++++++'
+        reply_list.append(line)
+
+    return "\n".join(reply_list)
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # debug
     logger.info(f'update: {update}')
@@ -254,10 +345,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     cmd_result = CMD(update.message.text)
 
     # no valid stock
-    if len(cmd_result.stock) == 0:
+    if cmd_result.action in ["BUY", "SELL", "ASK", "CANCEL"] and len(cmd_result.stock) == 0:
         return
     
     logger.info(f'{cmd_result}')
+
     reply_text = ''
     match cmd_result.action:
         case  "ASK":
@@ -269,6 +361,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         case "SELL":
             print("SELL")
             reply_text = place_order(cmd_result)
+        case "DATA":
+            print("DATA")
+            reply_text = status_data()
+        case "CANCEL":
+            print("CANCEL")
+            reply_text = del_order(cmd_result)
    
     if reply_text != "":
         await update.message.reply_text(f'{reply_text}')

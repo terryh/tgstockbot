@@ -35,6 +35,24 @@ example:
 0050 2330
 ```
 
+數據(DATA) or 市場(MARKET) or 資訊(INFO) or 狀態(STATUS;STATE) 包含已經送出的單據
+```
+數據
+
+```
+
+取消(CANCEL)
+
+取消買進或是賣出 0050 在價位 71
+```
+DEL 0050 @71
+```
+
+取消所有 0050 單
+```
+DEL 0050
+```
+
 ## 安裝與設定
 
 
@@ -47,8 +65,9 @@ example:
 
 建立 api [https://ai.sinotrade.com.tw/python/Main/index.aspx](https://ai.sinotrade.com.tw/python/Main/index.aspx)
 
-### 設定環境
+api 文件 [https://sinotrade.github.io/](https://sinotrade.github.io/)
 
+### 設定環境
 
 * 安裝 python 請搜尋網路，或是參考官方文件
 
