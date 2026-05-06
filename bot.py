@@ -235,7 +235,7 @@ def place_order(cmd):
 
     if sheets > 0:
         # use sheets
-        reply_list.append(f'{action_word}股數可以湊張，{action_word} {contract.name} {contract.code} {sheets} 張')
+        reply_list.append(f'{action_word}股數可以湊張，{action_word} {contract.name} {contract.code} {sheets} 張 at {cmd.price}')
         order = sjapi.Order(
                   price=cmd.price,
                   quantity=sheets,
@@ -253,7 +253,7 @@ def place_order(cmd):
 
     else:
         # use shares
-        reply_list.append(f'{action_word} {contract.name} {contract.code} {cmd.shares} 股')
+        reply_list.append(f'{action_word} {contract.name} {contract.code} {cmd.shares} 股 at {cmd.price}')
         order = sjapi.Order(
                   price=cmd.price,
                   quantity=cmd.shares,
